@@ -1,0 +1,49 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Local environments and secrets
+.venv/
+venv/
+env/
+ENV/
+.conda/
+.env
+.env.*
+!.env.example
+
+# Datasets and generated dataset artifacts
+data/*
+!data/README.md
+!data/.gitkeep
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Model weights and checkpoints
+checkpoints/
+weights/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# Experiment outputs, logs, and tracking files
+results/*
+!results/.gitkeep
+runs/
+logs/
+wandb/
+tensorboard/
+*.log
+
+# Local and OS/editor files
+.DS_Store
+.vscode/
+*.swp
