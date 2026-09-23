@@ -1,0 +1,31 @@
+# Paths are intentionally relative/placeholders. Verify local dataset layouts
+# after acquisition; this configuration does not download any data.
+dataset_root: null
+source_domain: cityscapes
+target_domain: foggy_cityscapes
+
+split:
+  train: train
+  validation: val
+  test: test
+
+batch_size: 2
+num_workers: 2
+random_seed: 42
+
+bdd100k_subset_manifest: data/processed/bdd100k_subset/manifest.jsonl
+
+domains:
+  cityscapes:
+    type: cityscapes
+    root: null  # Verify image root after obtaining the dataset.
+    annotation_root: null  # Verify annotation root after obtaining the dataset.
+  foggy_cityscapes:
+    type: foggy_cityscapes
+    root: null  # Verify image root after obtaining the dataset.
+    annotation_root: null  # Verify annotation root after obtaining the dataset.
+  bdd100k:
+    type: bdd100k_subset
+    images_root: null  # Verify image root after obtaining the dataset.
+    labels_path: null  # Verify label file after obtaining the dataset.
+    manifest: null  # Set to the generated development manifest.
