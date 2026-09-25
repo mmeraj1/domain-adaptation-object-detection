@@ -286,6 +286,8 @@ class BDD100KSubsetDataset(Dataset):
         path = _resolve_path(record["image_path"], self.base_dir)
         if not path.is_file() and self.images_root:
             path = _resolve_path(record["image_path"], self.images_root)
+        if not path.is_file() and self.images_root and record.get("split"):
+            path = self.images_root / str(record["split"]) / Path(record["image_path"]).name
         return path
 
     def _annotation(self, record: Mapping[str, Any]) -> Any:

@@ -33,6 +33,7 @@ data/processed/bdd100k_subset/*
 !data/processed/bdd100k_subset/.gitkeep
 !data/processed/bdd100k_subset/*.jsonl
 !data/processed/bdd100k_subset/*.json
+data/processed/bdd100k_subset/manifest.jsonl
 *.zip
 *.tar
 *.tar.gz

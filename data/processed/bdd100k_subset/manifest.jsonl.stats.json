@@ -1,0 +1,30 @@
+{
+  "adverse_condition_candidate_records": 39010,
+  "by_condition": {
+    "night": 4851,
+    "rain": 4852,
+    "snow": 4851
+  },
+  "class_normalization_counts": {
+    "bike_to_bicycle": 812,
+    "motor_to_motorcycle": 241
+  },
+  "counts_by_original_split": {
+    "train": 8761,
+    "val": 1239
+  },
+  "duplicate_count": 0,
+  "fraction": null,
+  "invalid_bounding_box_count": 0,
+  "missing_image_count": 0,
+  "overlap_counts": {
+    "rain_and_night": 2300,
+    "rain_and_snow": 0,
+    "rain_and_snow_and_night": 0,
+    "snow_and_night": 2254
+  },
+  "seed": 42,
+  "selected_images": 10000,
+  "target_count": 10000,
+  "total_metadata_records": 79863
+}

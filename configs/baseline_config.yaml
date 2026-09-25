@@ -2,7 +2,7 @@
 # after acquisition; this configuration does not download any data.
 dataset_root: null
 source_domain: cityscapes
-target_domain: foggy_cityscapes
+target_domain: bdd100k
 
 split:
   train: train
@@ -26,6 +26,6 @@ domains:
     annotation_root: null  # Verify annotation root after obtaining the dataset.
   bdd100k:
     type: bdd100k_subset
-    images_root: null  # Verify image root after obtaining the dataset.
-    labels_path: null  # Verify label file after obtaining the dataset.
-    manifest: null  # Set to the generated development manifest.
+    images_root: data/raw/bdd100k/images
+    labels_path: null  # Labels are embedded in the generated manifest.
+    manifest: data/processed/bdd100k_subset/manifest.jsonl

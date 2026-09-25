@@ -1,9 +1,9 @@
-"""Create a manifest-only, deterministic BDD100K development subset.
+"""Create a deterministic BDD100K development subset and manifest.
 
-This script reads metadata supplied by the user and never copies or modifies
-the original BDD100K images or annotations. Sampling targets approximately
-equal representation of rain, snow, and night while treating conditions as
-overlapping metadata dimensions.
+This script reads metadata supplied by the user, copies only selected images
+into a separate subset root, and never modifies the original BDD100K files.
+Sampling targets approximately equal representation of rain, snow, and night
+while treating conditions as overlapping metadata dimensions.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import shutil
 from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -19,6 +20,24 @@ from typing import Any, Iterable, Mapping
 CONDITIONS = ("rain", "snow", "night")
 IMAGE_KEYS = ("image_path", "image", "name", "file_name", "filename")
 SPLIT_KEYS = ("split", "partition", "set")
+CONDITION_NORMALIZATION = {
+    "rainy": "rain",
+    "rain": "rain",
+    "snowy": "snow",
+    "snow": "snow",
+    "night": "night",
+}
+CLASS_NORMALIZATION = {"bike": "bicycle", "motor": "motorcycle"}
+CANONICAL_CLASSES = {
+    "person": 1,
+    "rider": 2,
+    "car": 3,
+    "truck": 4,
+    "bus": 5,
+    "train": 6,
+    "motorcycle": 7,
+    "bicycle": 8,
+}
 
 
 def read_records(path: Path) -> list[dict[str, Any]]:
@@ -82,8 +101,12 @@ def extract_conditions(record: Mapping[str, Any]) -> list[str]:
     time_of_day = _flatten_strings(
         _find_value(record, ("timeofday", "time_of_day", "time", "scene_time"))
     )
-    searchable = weather + time_of_day
-    return [condition for condition in CONDITIONS if any(condition in value for value in searchable)]
+    normalized = {
+        CONDITION_NORMALIZATION[value]
+        for value in weather + time_of_day
+        if value in CONDITION_NORMALIZATION
+    }
+    return [condition for condition in CONDITIONS if condition in normalized]
 
 
 def _record_split(record: Mapping[str, Any]) -> str | None:
@@ -100,15 +123,61 @@ def normalize_records(records: Iterable[Mapping[str, Any]]) -> list[dict[str, An
         if not image_path or image_path in seen:
             continue
         seen.add(image_path)
-        normalized.append(
-            {
-                "image_path": image_path,
-                "conditions": extract_conditions(record),
-                "source_metadata": dict(record),
-                **({"split": _record_split(record)} if _record_split(record) else {}),
-            }
-        )
+        normalized_record = {
+            "image_path": image_path,
+            "conditions": extract_conditions(record),
+            "source_metadata": dict(record),
+        }
+        split = _record_split(record)
+        if split:
+            normalized_record["split"] = split
+        normalized_record.update(_canonical_detection(record))
+        normalized.append(normalized_record)
     return normalized
+
+
+def _canonical_detection(record: Mapping[str, Any]) -> dict[str, Any]:
+    boxes = []
+    labels = []
+    normalization_counts = {"bike_to_bicycle": 0, "motor_to_motorcycle": 0}
+    invalid_box_count = 0
+    for obj in record.get("labels", []) or []:
+        if not isinstance(obj, Mapping):
+            continue
+        box = obj.get("box2d")
+        category = obj.get("category")
+        if not isinstance(box, Mapping) or category not in CANONICAL_CLASSES:
+            if category in CLASS_NORMALIZATION:
+                category = CLASS_NORMALIZATION[category]
+                if category not in CANONICAL_CLASSES:
+                    continue
+            else:
+                continue
+        values = [box.get(key) for key in ("x1", "y1", "x2", "y2")]
+        if len(values) != 4 or any(value is None for value in values):
+            invalid_box_count += 1
+            continue
+        try:
+            numeric_box = [float(value) for value in values]
+        except (TypeError, ValueError):
+            invalid_box_count += 1
+            continue
+        if numeric_box[2] < numeric_box[0] or numeric_box[3] < numeric_box[1]:
+            invalid_box_count += 1
+            continue
+        original_category = obj.get("category")
+        if original_category == "bike":
+            normalization_counts["bike_to_bicycle"] += 1
+        elif original_category == "motor":
+            normalization_counts["motor_to_motorcycle"] += 1
+        boxes.append(numeric_box)
+        labels.append(category)
+    return {
+        "boxes": boxes,
+        "labels": labels,
+        "class_normalization_counts": normalization_counts,
+        "invalid_box_count": invalid_box_count,
+    }
 
 
 def _sampling_score(
@@ -137,20 +206,41 @@ def _sample_condition_balanced(
     if target_count >= len(records):
         return list(records)
     rng = random.Random(seed)
-    remaining = list(records)
-    rng.shuffle(remaining)
+    remaining = set(range(len(records)))
+    condition_indices = {
+        condition: [
+            index for index, record in enumerate(records) if condition in record["conditions"]
+        ]
+        for condition in CONDITIONS
+    }
+    for indices in condition_indices.values():
+        rng.shuffle(indices)
     quotas = {condition: target_count / len(CONDITIONS) for condition in CONDITIONS}
     counts = {condition: 0 for condition in CONDITIONS}
     selected: list[dict[str, Any]] = []
 
     while remaining and len(selected) < target_count:
-        scores = [
-            _sampling_score(record, counts, quotas) for record in remaining
+        deficits = {
+            condition: quotas[condition] - counts[condition] for condition in CONDITIONS
+        }
+        condition = max(CONDITIONS, key=lambda item: deficits[item])
+        available = [index for index in condition_indices[condition] if index in remaining]
+        if not available:
+            available = list(remaining)
+            rng.shuffle(available)
+        best_deficit = max(
+            sum(max(deficits[item], 0.0) for item in records[index]["conditions"])
+            for index in available
+        )
+        best_indices = [
+            index
+            for index in available
+            if sum(max(deficits[item], 0.0) for item in records[index]["conditions"])
+            == best_deficit
         ]
-        best_score = min(scores)
-        best_indices = [index for index, score in enumerate(scores) if score == best_score]
         chosen_index = rng.choice(best_indices)
-        chosen = remaining.pop(chosen_index)
+        remaining.remove(chosen_index)
+        chosen = records[chosen_index]
         selected.append(chosen)
         for condition in chosen["conditions"]:
             counts[condition] += 1
@@ -203,6 +293,11 @@ def summarize(
         ),
     }
     original_split_records = [record for record in records if "split" in record]
+    class_normalization_counts = Counter()
+    invalid_box_count = 0
+    for record in records:
+        class_normalization_counts.update(record.get("class_normalization_counts", {}))
+        invalid_box_count += int(record.get("invalid_box_count", 0))
     return {
         "total_metadata_records": total_metadata_records,
         "adverse_condition_candidate_records": candidate_records,
@@ -212,13 +307,23 @@ def summarize(
         "counts_by_original_split": dict(
             Counter(record["split"] for record in original_split_records)
         ),
+        "class_normalization_counts": dict(class_normalization_counts),
+        "invalid_bounding_box_count": invalid_box_count,
     }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--metadata", type=Path, required=True, help="User-provided BDD metadata JSON/JSONL")
+    parser.add_argument(
+        "--metadata",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="One or more BDD annotation JSON/JSONL files",
+    )
     parser.add_argument("--output", type=Path, required=True, help="Output JSONL manifest path")
+    parser.add_argument("--images-root", type=Path, required=True)
+    parser.add_argument("--subset-root", type=Path, required=True)
     parser.add_argument(
         "--target-count",
         type=int,
@@ -233,7 +338,13 @@ def main() -> None:
     )
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
-    raw_records = read_records(args.metadata)
+    raw_records = []
+    for metadata_path in args.metadata:
+        split_name = "train" if "train" in metadata_path.name.lower() else "val"
+        for record in read_records(metadata_path):
+            if not _record_split(record):
+                record = {**record, "split": split_name}
+            raw_records.append(record)
     records = normalize_records(raw_records)
     if not records:
         raise SystemExit("No unique image records with recognizable image paths were found")
@@ -244,6 +355,27 @@ def main() -> None:
         seed=args.seed,
         fraction=args.fraction,
     )
+    source_indexes = {
+        split: {path.name: path for path in (args.images_root / split).rglob("*.jpg")}
+        for split in {str(record.get("split")) for record in selected}
+    }
+    selected_paths = set()
+    missing_image_count = 0
+    duplicate_count = 0
+    for record in selected:
+        source_path = source_indexes.get(str(record["split"]), {}).get(
+            Path(record["image_path"]).name
+        )
+        destination_path = args.subset_root / str(record["split"]) / Path(record["image_path"]).name
+        if record["image_path"] in selected_paths:
+            duplicate_count += 1
+            continue
+        selected_paths.add(record["image_path"])
+        if source_path is None:
+            missing_image_count += 1
+            continue
+        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, destination_path)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as stream:
         for record in selected:
@@ -252,6 +384,8 @@ def main() -> None:
     stats["seed"] = args.seed
     stats["target_count"] = args.target_count
     stats["fraction"] = args.fraction
+    stats["duplicate_count"] = duplicate_count
+    stats["missing_image_count"] = missing_image_count
     stats_path = args.output.with_suffix(args.output.suffix + ".stats.json")
     stats_path.write_text(json.dumps(stats, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(stats, indent=2, sort_keys=True))
