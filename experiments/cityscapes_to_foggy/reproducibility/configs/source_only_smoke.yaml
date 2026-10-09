@@ -1,0 +1,25 @@
+_BASE_: "../../../configs/faster_rcnn_VGG_cross_city.yaml"
+
+DATASETS:
+  TRAIN: ("cityscapes_fine_instance_seg_train",)
+  TEST: ("cityscapes_foggy_val",)
+
+SEMISUPNET:
+  Trainer: "baseline"
+
+SOLVER:
+  IMS_PER_BATCH: 2
+  BASE_LR: 0.005
+  MAX_ITER: 10
+  CHECKPOINT_PERIOD: 10
+
+DATALOADER:
+  SUP_PERCENT: 100.0
+  RANDOM_DATA_SEED: 0
+  RANDOM_DATA_SEED_PATH: "experiments/cityscapes_to_foggy/source_only/cityscapes_100_seed.json"
+  NUM_WORKERS: 2
+
+TEST:
+  EVAL_PERIOD: 0
+
+OUTPUT_DIR: "/workspace/experiments/cityscapes_to_foggy/source_only/smoke"

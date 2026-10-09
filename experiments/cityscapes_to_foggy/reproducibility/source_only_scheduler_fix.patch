@@ -1,0 +1,14 @@
+--- adapteacher/engine/trainer.py.before_source_only_fix	2026-10-09 11:14:07.574635767 +0000
++++ adapteacher/engine/trainer.py	2026-10-09 11:14:07.575635766 +0000
+@@ -41,6 +41,11 @@
+ 
+ # Supervised-only Trainer
+ class BaselineTrainer(DefaultTrainer):
++
++    @classmethod
++    def build_lr_scheduler(cls, cfg, optimizer):
++        return build_lr_scheduler(cfg, optimizer)
++
+     def __init__(self, cfg):
+         """
+         Args:
