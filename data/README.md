@@ -9,10 +9,10 @@ are ignored by Git.
 - **Cityscapes** is the source domain for clear urban-scene object detection.
 - **Foggy Cityscapes** is target domain 1, used to study adverse-weather domain
   shift from clear to foggy imagery.
-- **BDD100K adverse-weather data** is target domain 2. Development uses a
-  deterministic, manifest-only approximately 10% subset covering the rain,
-  snow, and night metadata dimensions. The full dataset is reserved for later
-  experiments.
+- **BDD100K** is target domain 2 for adverse-driving conditions. The validated
+	local development subset contains 10,000 unique images focused on rain, snow,
+	and night. Condition counts overlap: an image can be both rainy and night,
+	or snowy and night, and is still stored only once.
 
 ## Expected local layout
 
@@ -58,11 +58,11 @@ archives, or dataset images in this repository.
 	night as independent dimensions, selects approximately 10,000 unique
 	adverse-condition images with approximately equal condition representation,
 	and writes only a manifest.
-4. Store the generated manifest under `data/processed/bdd100k_subset/`.
-	Images and original annotations remain in their original locations; they
-	are not copied or altered.
+4. Store the generated manifest under `data/processed/bdd100k_subset/` and
+   selected images under `data/raw/bdd100k/images/train/` and
+   `data/raw/bdd100k/images/val/`.
 5. Run `scripts/check_dataset.py` against each configured domain before any
-	model work.
+   model work.
 
 The subset script accepts metadata records containing an image path/name and
 weather/time-of-day fields. Since BDD100K metadata schemas can vary by release
@@ -70,20 +70,124 @@ or local preprocessing, the exact field names and annotation linkage must be
 verified from the acquired files. Unrecognized records with an image path are
 reported as unclassified and excluded from the adverse-condition subset.
 
-## Subset and reproducibility
+## BDD100K
 
-The default target is `10,000` images (`--target-count 10000`) and the default
-seed is `42`. `--fraction` is available as an optional alternative based on
-the number of adverse-condition candidates. Sampling uses all three condition
-dimensions jointly and minimizes deviation from equal rain, snow, and night
-counts. Only records classified into at least one dimension are eligible. A
-record may belong to multiple buckets, contributes to each applicable count,
-and is selected at most once, so conditions are not treated as mutually
-exclusive. Existing source split fields are preserved; missing split fields
-remain unspecified and no research split is silently created.
-The manifest preserves the source metadata and records the assigned split and
-conditions. The adjacent `.stats.json` file records counts, seed, and fraction.
+### Validated subset
 
-For reproducibility, retain the dataset release/version, metadata file version,
-manifest, seed, split ratios, configuration revision, and preprocessing
-statistics with the experiment record.
+The current development subset was generated with seed `42` and contains:
+
+| Measure | Count |
+| --- | ---: |
+| Total unique images | 10,000 |
+| Original `train` split | 8,761 |
+| Original `val` split | 1,239 |
+| Original `test` split | 0 |
+| Rain | 4,852 |
+| Snow | 4,851 |
+| Night | 4,851 |
+| Rain + night | 2,300 |
+| Snow + night | 2,254 |
+| Rain + snow | 0 |
+| Duplicate selected images | 0 |
+| Missing selected images | 0 |
+| Invalid boxes | 0 |
+| Total boxes/labels | 112,642 |
+
+The subset preserves the original BDD100K `train` and `val` split metadata. No
+synthetic test split was created and no test annotations were fabricated.
+
+### Metadata and class normalization
+
+BDD100K metadata is normalized to the research conditions:
+
+- `rainy` -> `rain`
+- `snowy` -> `snow`
+- `night` -> `night`
+
+Detection classes are normalized without mapping unrelated categories:
+
+- `bike` -> `bicycle`
+- `motor` -> `motorcycle`
+
+The canonical detection classes and IDs are unchanged:
+
+```text
+person, rider, car, truck, bus, train, motorcycle, bicycle
+```
+
+### Current local structure
+
+```text
+data/
+├── raw/
+│   └── bdd100k/
+│       └── images/
+│           ├── train/
+│           └── val/
+└── processed/
+		└── bdd100k_subset/
+				├── manifest.jsonl
+				└── manifest.jsonl.stats.json
+```
+
+`manifest.jsonl` contains the selected image names, original split,
+normalized conditions, canonical labels, boxes, and source metadata.
+`manifest.jsonl.stats.json` records the selection and validation statistics.
+
+### Git and reproducibility policy
+
+- BDD100K JPG/PNG image files are local-only and are not committed to Git.
+- The generated 74 MB `manifest.jsonl` is ignored by Git.
+- The small `manifest.jsonl.stats.json` file is version-controlled for
+	reproducibility and audit information.
+- Dataset archives and full raw BDD100K releases are not committed.
+
+### Regenerate the subset
+
+The original BDD100K images and both annotation files must already be available
+locally. The script accepts one or more metadata files and requires an image
+root, subset image root, and manifest output path. For the verified BDD100K
+release, run:
+
+```bash
+python scripts/create_bdd100k_subset.py \
+	--metadata /path/to/bdd100k_labels_images_train.json \
+						/path/to/bdd100k_labels_images_val.json \
+	--images-root /path/to/bdd100k/images/100k \
+	--subset-root data/raw/bdd100k/images \
+	--output data/processed/bdd100k_subset/manifest.jsonl \
+	--target-count 10000 \
+	--seed 42
+```
+
+The command uses only supported options. It preserves source train/val splits,
+copies only selected images, and does not modify the original dataset.
+
+### Validation commands
+
+Run the tests:
+
+```bash
+python -m pytest tests/test_data_pipeline.py -v
+```
+
+Validate the generated BDD train and validation subsets:
+
+```bash
+python scripts/check_dataset.py \
+	--config configs/baseline_config.yaml \
+	--role target \
+	--split train \
+	--max-samples 3
+
+python scripts/check_dataset.py \
+	--config configs/baseline_config.yaml \
+	--role target \
+	--split val \
+	--max-samples 3
+```
+
+## Status
+
+- **BDD100K pipeline status:** validated.
+- **Cityscapes and Foggy Cityscapes:** pending dataset access/validation.
