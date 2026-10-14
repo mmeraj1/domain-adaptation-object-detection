@@ -78,3 +78,4 @@ Adaptive_teacher_Experiment/final_model_checkpoints.tar
 # Large research backups
 /Adaptive_teacher_Experiment/*.tar
 /Adaptive_teacher_Experiment/*.tar.gz
+/Adaptive_teacher_Experiment/experiment_05_proposed_improvement.ipynb
