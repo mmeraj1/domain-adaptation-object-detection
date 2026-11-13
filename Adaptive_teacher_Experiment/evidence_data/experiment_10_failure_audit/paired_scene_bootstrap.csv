@@ -1,0 +1,3 @@
+experiment,n_scenes,precision_delta_pp,bootstrap_low_pp,bootstrap_high_pp
+independent_photometric_20,20,-0.3179650238473768,-0.7502016269833224,0.08432237758350086
+original_flip_50,50,-2.072538860103627,-3.3576702116848107,-0.7993318370746825

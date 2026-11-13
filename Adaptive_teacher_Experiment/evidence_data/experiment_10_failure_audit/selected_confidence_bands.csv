@@ -1,0 +1,13 @@
+experiment,method,band,selected,TP,FP,selected_precision
+independent_photometric_20,confidence_agreement,0.70–0.80,45,9,36,0.2
+independent_photometric_20,confidence_agreement,<0.70,1070,46,1024,0.04299065420560748
+independent_photometric_20,confidence_agreement,≥0.80,143,114,29,0.7972027972027972
+independent_photometric_20,confidence_only,0.70–0.80,50,11,39,0.22
+independent_photometric_20,confidence_only,<0.70,1064,48,1016,0.045112781954887216
+independent_photometric_20,confidence_only,≥0.80,144,114,30,0.7916666666666666
+original_flip_50,confidence_agreement,0.70–0.80,66,24,42,0.36363636363636365
+original_flip_50,confidence_agreement,<0.70,951,60,891,0.06309148264984227
+original_flip_50,confidence_agreement,≥0.80,334,273,61,0.8173652694610778
+original_flip_50,confidence_only,0.70–0.80,113,32,81,0.2831858407079646
+original_flip_50,confidence_only,<0.70,856,68,788,0.0794392523364486
+original_flip_50,confidence_only,≥0.80,382,285,97,0.7460732984293194

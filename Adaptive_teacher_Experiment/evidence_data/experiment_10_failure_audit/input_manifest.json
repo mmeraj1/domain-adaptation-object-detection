@@ -1,0 +1,14 @@
+{
+  "flip50": {
+    "path": "/Users/mohammadmeraj/Desktop/phd/vizuara/Deliverables/milestone2/Adaptive_teacher_Experiment 2/experiment_10_weak_augmentation_agreement/results/matched_count_selections.json",
+    "sha256": "61891360fd9e9a2e316ddd5bd2674dd50b77f666ae46591c4365b91ed0297fcf"
+  },
+  "photo20": {
+    "path": "/Users/mohammadmeraj/Desktop/phd/vizuara/Deliverables/milestone2/Adaptive_teacher_Experiment 2/experiment_10_weak_augmentation_agreement/results/independent_weak_views_20/matched_count_selections.json",
+    "sha256": "8e84d8e723c72a631f9eaccf89d830c1bad03dd3ff15232339b4c831708daf89"
+  },
+  "gt": {
+    "path": "/Users/mohammadmeraj/Desktop/phd/vizuara/Deliverables/milestone2/Adaptive_teacher_Experiment 2/research_code_results/experiments/cityscapes_to_foggy/experiment_05_fog_aware_teacher/fog_aware_05c/evaluation_5000_v2/strong/exp05c_final_strong_val_coco_format.json",
+    "sha256": "247e7ffb290e32871b37c5aa624b0a13cc5d4ec103808274fb7a97d9149b8e7f"
+  }
+}
